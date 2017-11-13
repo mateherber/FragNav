@@ -50,6 +50,8 @@ public class BottomTabsActivity extends AppCompatActivity implements BaseFragmen
                         bottomBar.selectTabAtPosition(index);
                     }
                 })
+                .fragmentHideStrategy(FragNavController.DETACH_ON_NAVIGATE_HIDE_ON_SWITCH)
+                .eager(true)
                 .build();
 
 
