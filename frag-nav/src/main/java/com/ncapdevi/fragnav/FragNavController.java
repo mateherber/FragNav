@@ -1186,7 +1186,7 @@ public class FragNavController {
             if (mRootFragmentListener == null && mRootFragments == null) {
                 throw new IndexOutOfBoundsException("Either a root fragment(s) needs to be set, or a fragment listener");
             }
-            if ((mPopStrategy == UNIQUE_TAB_HISTORY || mPopStrategy == UNLIMITED_TAB_HISTORY) && fragNavSwitchController == null) {
+            if ((mPopStrategy == UNIQUE_TAB_HISTORY || mPopStrategy == UNLIMITED_TAB_HISTORY) && mFragNavSwitchController == null) {
                 throw new IllegalStateException(
                         "Switch handler needs to be set for unique or unlimited tab history strategy");
             }
