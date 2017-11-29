@@ -150,6 +150,52 @@ public class FragNavController {
         return new Builder(savedInstanceState, fragmentManager, containerId);
     }
 
+    /**
+     * Helper function to make sure that we are starting with a clean slate and to perform our first fragment interaction.
+     *
+     * @param index the tab index to initialize to
+     */
+    public void initialize(@TabIndex int index) {
+        mSelectedTabIndex = index;
+        if (mSelectedTabIndex > mFragmentStacks.size()) {
+            throw new IndexOutOfBoundsException("Starting index cannot be larger than the number of stacks");
+        }
+
+        mSelectedTabIndex = index;
+        clearFragmentManager();
+        clearDialogFragment();
+
+        if (index == NO_TAB) {
+            return;
+        }
+
+        FragmentTransaction ft = createTransactionWithOptions(null, false);
+
+        int lowerBound = mCreateEager ? 0 : index;
+        int upperBound = mCreateEager ? mFragmentStacks.size() : index + 1;
+        for (int i = lowerBound; i < upperBound; i++) {
+            mSelectedTabIndex = i;
+            Fragment fragment = getRootFragment(i);
+            ft.add(mContainerId, fragment, generateTag(fragment));
+            if (i != index) {
+                if (shouldDetachAttachOnSwitch()) {
+                    ft.detach(fragment);
+                } else {
+                    ft.hide(fragment);
+                }
+            } else {
+                mCurrentFrag = fragment;
+            }
+        }
+        mSelectedTabIndex = index;
+
+        commitTransaction(ft, null);
+
+        if (mTransactionListener != null) {
+            mTransactionListener.onTabTransaction(getCurrentFrag(), mSelectedTabIndex);
+        }
+    }
+
     //endregion
 
     //region Transactions
@@ -168,9 +214,7 @@ public class FragNavController {
     private void switchTabInternal(@TabIndex int index, @Nullable FragNavTransactionOptions transactionOptions) throws IndexOutOfBoundsException {
         //Check to make sure the tab is within range
         if (index >= mFragmentStacks.size()) {
-            throw new IndexOutOfBoundsException("Can't switch to a tab that hasn't been initialized, " +
-                    "Index : " + index + ", current stack size : " + mFragmentStacks.size() +
-                    ". Make sure to create all of the tabs you need in the Constructor or provide a way for them to be created via RootFragmentListener.");
+            throw new IndexOutOfBoundsException("Can't switch to a tab that hasn't been initialized, " + "Index : " + index + ", current stack size : " + mFragmentStacks.size() + ". Make sure to create all of the tabs you need in the Constructor or provide a way for them to be created via RootFragmentListener.");
         }
         if (mSelectedTabIndex != index) {
             mSelectedTabIndex = index;
@@ -198,7 +242,7 @@ public class FragNavController {
 
             mCurrentFrag = fragment;
             if (mTransactionListener != null) {
-                mTransactionListener.onTabTransaction(mCurrentFrag, mSelectedTabIndex);
+                mTransactionListener.onTabTransaction(getCurrentFrag(), mSelectedTabIndex);
             }
         }
     }
@@ -232,9 +276,8 @@ public class FragNavController {
 
             mCurrentFrag = fragment;
             if (mTransactionListener != null) {
-                mTransactionListener.onFragmentTransaction(mCurrentFrag, TransactionType.PUSH);
+                mTransactionListener.onFragmentTransaction(getCurrentFrag(), TransactionType.PUSH);
             }
-
         }
     }
 
@@ -276,8 +319,7 @@ public class FragNavController {
 
     private int tryPopFragmentsFromCurrentStack(int popDepth, @Nullable FragNavTransactionOptions transactionOptions) throws UnsupportedOperationException {
         if (mPopStrategy == CURRENT_TAB && isRootFragment()) {
-            throw new UnsupportedOperationException(
-                    "You can not popFragment the rootFragment. If you need to change this fragment, use replaceFragment(fragment)");
+            throw new UnsupportedOperationException("You can not popFragment the rootFragment. If you need to change this fragment, use replaceFragment(fragment)");
         } else if (popDepth < 1) {
             throw new UnsupportedOperationException("popFragments parameter needs to be greater than 0");
         } else if (mSelectedTabIndex == NO_TAB) {
@@ -323,7 +365,6 @@ public class FragNavController {
             }
         }
 
-
         //Need to have this down here so that that tag has been
         // committed to the fragment before we add to the stack
         if (bShouldPush) {
@@ -332,7 +373,7 @@ public class FragNavController {
 
         mCurrentFrag = fragment;
         if (mTransactionListener != null) {
-            mTransactionListener.onFragmentTransaction(mCurrentFrag, TransactionType.POP);
+            mTransactionListener.onFragmentTransaction(getCurrentFrag(), TransactionType.POP);
         }
         return popDepth;
     }
@@ -391,7 +432,6 @@ public class FragNavController {
                 }
             }
 
-
             if (bShouldPush) {
                 mFragmentStacks.get(mSelectedTabIndex).push(fragment);
             }
@@ -401,7 +441,7 @@ public class FragNavController {
 
             mCurrentFrag = fragment;
             if (mTransactionListener != null) {
-                mTransactionListener.onFragmentTransaction(mCurrentFrag, TransactionType.POP);
+                mTransactionListener.onFragmentTransaction(getCurrentFrag(), TransactionType.POP);
             }
         }
     }
@@ -437,13 +477,11 @@ public class FragNavController {
             //Commit our transactions
             commitTransaction(ft, transactionOptions);
 
-
             fragmentStack.push(fragment);
             mCurrentFrag = fragment;
 
             if (mTransactionListener != null) {
-                mTransactionListener.onFragmentTransaction(mCurrentFrag, TransactionType.REPLACE);
-
+                mTransactionListener.onFragmentTransaction(getCurrentFrag(), TransactionType.REPLACE);
             }
         }
     }
@@ -469,8 +507,9 @@ public class FragNavController {
         //Else try to find one in the FragmentManager
         else {
             FragmentManager fragmentManager;
-            if (mCurrentFrag != null) {
-                fragmentManager = mCurrentFrag.getChildFragmentManager();
+            Fragment currentFrag = getCurrentFrag();
+            if (currentFrag != null) {
+                fragmentManager = currentFrag.getChildFragmentManager();
             } else {
                 fragmentManager = mFragmentManager;
             }
@@ -497,8 +536,9 @@ public class FragNavController {
         // If we don't have the current dialog, try to find and dismiss it
         else {
             FragmentManager fragmentManager;
-            if (mCurrentFrag != null) {
-                fragmentManager = mCurrentFrag.getChildFragmentManager();
+            Fragment currentFrag = getCurrentFrag();
+            if (currentFrag != null) {
+                fragmentManager = currentFrag.getChildFragmentManager();
             } else {
                 fragmentManager = mFragmentManager;
             }
@@ -521,8 +561,9 @@ public class FragNavController {
     public void showDialogFragment(@Nullable DialogFragment dialogFragment) {
         if (dialogFragment != null) {
             FragmentManager fragmentManager;
-            if (mCurrentFrag != null) {
-                fragmentManager = mCurrentFrag.getChildFragmentManager();
+            Fragment currentFrag = getCurrentFrag();
+            if (currentFrag != null) {
+                fragmentManager = currentFrag.getChildFragmentManager();
             } else {
                 fragmentManager = mFragmentManager;
             }
@@ -551,52 +592,6 @@ public class FragNavController {
     //region Private helper functions
 
     /**
-     * Helper function to make sure that we are starting with a clean slate and to perform our first fragment interaction.
-     *
-     * @param index the tab index to initialize to
-     */
-    private void initialize(@TabIndex int index) {
-        mSelectedTabIndex = index;
-        if (mSelectedTabIndex > mFragmentStacks.size()) {
-            throw new IndexOutOfBoundsException("Starting index cannot be larger than the number of stacks");
-        }
-
-        mSelectedTabIndex = index;
-        clearFragmentManager();
-        clearDialogFragment();
-
-        if (index == NO_TAB) {
-            return;
-        }
-
-        FragmentTransaction ft = createTransactionWithOptions(null, false);
-
-        int lowerBound = mCreateEager ? 0 : index;
-        int upperBound = mCreateEager ? mFragmentStacks.size() : index + 1;
-        for (int i = lowerBound; i < upperBound; i++) {
-            mSelectedTabIndex = i;
-            Fragment fragment = getRootFragment(i);
-            ft.add(mContainerId, fragment, generateTag(fragment));
-            if (i != index) {
-                if (shouldDetachAttachOnSwitch()) {
-                    ft.detach(fragment);
-                } else {
-                    ft.hide(fragment);
-                }
-            } else {
-                mCurrentFrag = fragment;
-            }
-        }
-        mSelectedTabIndex = index;
-
-        commitTransaction(ft, null);
-
-        if (mTransactionListener != null) {
-            mTransactionListener.onTabTransaction(mCurrentFrag, mSelectedTabIndex);
-        }
-    }
-
-    /**
      * Helper function to get the root fragment for a given index. This is done by either passing them in the constructor, or dynamically via NavListener.
      *
      * @param index The tab index to get this fragment from
@@ -616,11 +611,9 @@ public class FragNavController {
             if (mSelectedTabIndex != NO_TAB) {
                 mFragmentStacks.get(mSelectedTabIndex).push(fragment);
             }
-
         }
         if (fragment == null) {
-            throw new IllegalStateException("Either you haven't past in a fragment at this index in your constructor, or you haven't " +
-                    "provided a way to create it while via your RootFragmentListener.getRootFragment(index)");
+            throw new IllegalStateException("Either you haven't past in a fragment at this index in your constructor, or you haven't " + "provided a way to create it while via your RootFragmentListener.getRootFragment(index)");
         }
 
         return fragment;
@@ -674,19 +667,23 @@ public class FragNavController {
     @CheckResult
     public Fragment getCurrentFrag() {
         //Attempt to used stored current fragment
-        if (mCurrentFrag != null) {
-            return mCurrentFrag;
+        Fragment currentFragment = this.mCurrentFrag;
+        if (currentFragment != null && currentFragment.isAdded() && !currentFragment.isDetached()) {
+            return currentFragment;
         } else if (mSelectedTabIndex == NO_TAB) {
             return null;
         }
         //if not, try to pull it from the stack
-        else {
-            Stack<Fragment> fragmentStack = mFragmentStacks.get(mSelectedTabIndex);
-            if (!fragmentStack.isEmpty()) {
-                mCurrentFrag = mFragmentManager.findFragmentByTag(mFragmentStacks.get(mSelectedTabIndex).peek().getTag());
+        Stack<Fragment> fragmentStack = mFragmentStacks.get(mSelectedTabIndex);
+        if (!fragmentStack.isEmpty()) {
+            Fragment fragmentByTag = mFragmentManager.findFragmentByTag(mFragmentStacks.get(mSelectedTabIndex).peek().getTag());
+            if (fragmentByTag != null) {
+                this.mCurrentFrag = fragmentByTag;
+                return fragmentByTag;
             }
         }
-        return mCurrentFrag;
+
+        return null;
     }
 
     /**
@@ -701,16 +698,6 @@ public class FragNavController {
         return fragment.getClass().getName() + ++mTagCount;
     }
 
-    /**
-     * This check is here to prevent recursive entries into executePendingTransactions
-     */
-    private void executePendingTransactions() {
-        if (!mExecutingTransaction) {
-            mExecutingTransaction = true;
-            mFragmentManager.executePendingTransactions();
-            mExecutingTransaction = false;
-        }
-    }
 
     /**
      * Private helper function to clear out the fragment manager on initialization. All fragment management should be done via FragNav.
@@ -742,7 +729,6 @@ public class FragNavController {
         if (transactionOptions != null) {
             if (isPopping) {
                 ft.setCustomAnimations(transactionOptions.popEnterAnimation, transactionOptions.popExitAnimation);
-
             } else {
                 ft.setCustomAnimations(transactionOptions.enterAnimation, transactionOptions.exitAnimation);
             }
@@ -750,13 +736,11 @@ public class FragNavController {
 
             ft.setTransition(transactionOptions.transition);
 
-
             if (transactionOptions.sharedElements != null) {
                 for (Pair<View, String> sharedElement : transactionOptions.sharedElements) {
                     ft.addSharedElement(sharedElement.first, sharedElement.second);
                 }
             }
-
 
             if (transactionOptions.breadCrumbTitle != null) {
                 ft.setBreadCrumbTitle(transactionOptions.breadCrumbTitle);
@@ -764,7 +748,6 @@ public class FragNavController {
 
             if (transactionOptions.breadCrumbShortTitle != null) {
                 ft.setBreadCrumbShortTitle(transactionOptions.breadCrumbShortTitle);
-
             }
         }
         return ft;
@@ -782,7 +765,6 @@ public class FragNavController {
         } else {
             fragmentTransaction.commit();
         }
-        executePendingTransactions();
     }
 
     private boolean shouldDetachAttachOnPushPop() {
@@ -807,7 +789,6 @@ public class FragNavController {
         return mFragmentStacks.size();
     }
 
-
     /**
      * Get a copy of the stack at a given index
      *
@@ -825,7 +806,6 @@ public class FragNavController {
         }
         return (Stack<Fragment>) mFragmentStacks.get(index).clone();
     }
-
 
     /**
      * Get a copy of the current stack that is being displayed
@@ -850,7 +830,6 @@ public class FragNavController {
         return mSelectedTabIndex;
     }
 
-
     /**
      * @return If true, you are at the bottom of the stack
      * (Consider using replaceFragment if you need to change the root fragment for some reason)
@@ -872,6 +851,19 @@ public class FragNavController {
         return mFragmentManager.isStateSaved();
     }
 
+    /**
+     * Use this if you need to make sure that pending transactions occur immediately. This call is safe to
+     * call as often as you want as there's a check to prevent multiple executePendingTransactions at once
+     */
+    public void executePendingTransactions() {
+        if (!mExecutingTransaction) {
+            mExecutingTransaction = true;
+            mFragmentManager.executePendingTransactions();
+            mExecutingTransaction = false;
+        }
+    }
+
+
     //endregion
 
     //region SavedInstanceState
@@ -890,8 +882,9 @@ public class FragNavController {
         outState.putInt(EXTRA_SELECTED_TAB_INDEX, mSelectedTabIndex);
 
         // Write current fragment
-        if (mCurrentFrag != null) {
-            outState.putString(EXTRA_CURRENT_FRAGMENT, mCurrentFrag.getTag());
+        Fragment currentFrag = getCurrentFrag();
+        if (currentFrag != null) {
+            outState.putString(EXTRA_CURRENT_FRAGMENT, currentFrag.getTag());
         }
 
         // Write stacks
@@ -952,7 +945,6 @@ public class FragNavController {
                         } else {
                             fragment = getRootFragment(x);
                         }
-
                     } else {
                         fragment = mFragmentManager.findFragmentByTag(tag);
                     }
@@ -991,14 +983,11 @@ public class FragNavController {
     //endregion
 
     public enum TransactionType {
-        PUSH,
-        POP,
-        REPLACE
+        PUSH, POP, REPLACE
     }
 
     //Declare the TabIndex annotation
-    @IntDef({NO_TAB, TAB1, TAB2, TAB3, TAB4, TAB5, TAB6, TAB7, TAB8, TAB9, TAB10, TAB11, TAB12,
-            TAB13, TAB14, TAB15, TAB16, TAB17, TAB18, TAB19, TAB20})
+    @IntDef({NO_TAB, TAB1, TAB2, TAB3, TAB4, TAB5, TAB6, TAB7, TAB8, TAB9, TAB10, TAB11, TAB12, TAB13, TAB14, TAB15, TAB16, TAB17, TAB18, TAB19, TAB20})
     @Retention(RetentionPolicy.SOURCE)
     public @interface TabIndex {
     }
@@ -1045,7 +1034,7 @@ public class FragNavController {
 
     public interface TransactionListener {
 
-        void onTabTransaction(Fragment fragment, int index);
+        void onTabTransaction(@Nullable Fragment fragment, int index);
 
         void onFragmentTransaction(Fragment fragment, TransactionType transactionType);
     }
@@ -1128,7 +1117,6 @@ public class FragNavController {
             return this;
         }
 
-
         /**
          * @param rootFragmentListener a listener that allows for dynamically creating root fragments
          * @param numberOfTabs         the number of tabs that will be switched between
@@ -1187,12 +1175,9 @@ public class FragNavController {
                 throw new IndexOutOfBoundsException("Either a root fragment(s) needs to be set, or a fragment listener");
             }
             if ((mPopStrategy == UNIQUE_TAB_HISTORY || mPopStrategy == UNLIMITED_TAB_HISTORY) && mFragNavSwitchController == null) {
-                throw new IllegalStateException(
-                        "Switch handler needs to be set for unique or unlimited tab history strategy");
+                throw new IllegalStateException("Switch handler needs to be set for unique or unlimited tab history strategy");
             }
             return new FragNavController(this, mSavedInstanceState);
         }
-
-
     }
 }
