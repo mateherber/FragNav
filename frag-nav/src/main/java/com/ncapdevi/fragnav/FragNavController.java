@@ -120,10 +120,12 @@ public class FragNavController {
                 mFragNavTabHistoryController = new CurrentTabHistoryController(fragNavPopController);
                 break;
             case UNIQUE_TAB_HISTORY:
-                mFragNavTabHistoryController = new UniqueTabHistoryController(fragNavPopController, builder.mFragNavSwitchController);
+                mFragNavTabHistoryController = new UniqueTabHistoryController(fragNavPopController,
+                        builder.mFragNavSwitchController);
                 break;
             case UNLIMITED_TAB_HISTORY:
-                mFragNavTabHistoryController = new UnlimitedTabHistoryController(fragNavPopController, builder.mFragNavSwitchController);
+                mFragNavTabHistoryController = new UnlimitedTabHistoryController(fragNavPopController,
+                        builder.mFragNavSwitchController);
                 break;
         }
 
@@ -214,7 +216,9 @@ public class FragNavController {
     private void switchTabInternal(@TabIndex int index, @Nullable FragNavTransactionOptions transactionOptions) throws IndexOutOfBoundsException {
         //Check to make sure the tab is within range
         if (index >= mFragmentStacks.size()) {
-            throw new IndexOutOfBoundsException("Can't switch to a tab that hasn't been initialized, " + "Index : " + index + ", current stack size : " + mFragmentStacks.size() + ". Make sure to create all of the tabs you need in the Constructor or provide a way for them to be created via RootFragmentListener.");
+            throw new IndexOutOfBoundsException("Can't switch to a tab that hasn't been initialized, " +
+                    "Index : " + index + ", current stack size : " + mFragmentStacks.size() +
+                    ". Make sure to create all of the tabs you need in the Constructor or provide a way for them to be created via RootFragmentListener.");
         }
         if (mSelectedTabIndex != index) {
             mSelectedTabIndex = index;
@@ -319,7 +323,8 @@ public class FragNavController {
 
     private int tryPopFragmentsFromCurrentStack(int popDepth, @Nullable FragNavTransactionOptions transactionOptions) throws UnsupportedOperationException {
         if (mPopStrategy == CURRENT_TAB && isRootFragment()) {
-            throw new UnsupportedOperationException("You can not popFragment the rootFragment. If you need to change this fragment, use replaceFragment(fragment)");
+            throw new UnsupportedOperationException(
+                    "You can not popFragment the rootFragment. If you need to change this fragment, use replaceFragment(fragment)");
         } else if (popDepth < 1) {
             throw new UnsupportedOperationException("popFragments parameter needs to be greater than 0");
         } else if (mSelectedTabIndex == NO_TAB) {
@@ -613,7 +618,8 @@ public class FragNavController {
             }
         }
         if (fragment == null) {
-            throw new IllegalStateException("Either you haven't past in a fragment at this index in your constructor, or you haven't " + "provided a way to create it while via your RootFragmentListener.getRootFragment(index)");
+            throw new IllegalStateException("Either you haven't past in a fragment at this index in your constructor, or you haven't " +
+                    "provided a way to create it while via your RootFragmentListener.getRootFragment(index)");
         }
 
         return fragment;
@@ -852,8 +858,9 @@ public class FragNavController {
     }
 
     /**
-     * Use this if you need to make sure that pending transactions occur immediately. This call is safe to
-     * call as often as you want as there's a check to prevent multiple executePendingTransactions at once
+     *  Use this if you need to make sure that pending transactions occur immediately. This call is safe to
+     *  call as often as you want as there's a check to prevent multiple executePendingTransactions at once
+     *
      */
     public void executePendingTransactions() {
         if (!mExecutingTransaction) {
@@ -983,11 +990,14 @@ public class FragNavController {
     //endregion
 
     public enum TransactionType {
-        PUSH, POP, REPLACE
+        PUSH,
+        POP,
+        REPLACE
     }
 
     //Declare the TabIndex annotation
-    @IntDef({NO_TAB, TAB1, TAB2, TAB3, TAB4, TAB5, TAB6, TAB7, TAB8, TAB9, TAB10, TAB11, TAB12, TAB13, TAB14, TAB15, TAB16, TAB17, TAB18, TAB19, TAB20})
+    @IntDef({NO_TAB, TAB1, TAB2, TAB3, TAB4, TAB5, TAB6, TAB7, TAB8, TAB9, TAB10, TAB11, TAB12,
+            TAB13, TAB14, TAB15, TAB16, TAB17, TAB18, TAB19, TAB20})
     @Retention(RetentionPolicy.SOURCE)
     public @interface TabIndex {
     }
@@ -1175,7 +1185,8 @@ public class FragNavController {
                 throw new IndexOutOfBoundsException("Either a root fragment(s) needs to be set, or a fragment listener");
             }
             if ((mPopStrategy == UNIQUE_TAB_HISTORY || mPopStrategy == UNLIMITED_TAB_HISTORY) && mFragNavSwitchController == null) {
-                throw new IllegalStateException("Switch handler needs to be set for unique or unlimited tab history strategy");
+                throw new IllegalStateException(
+                        "Switch handler needs to be set for unique or unlimited tab history strategy");
             }
             return new FragNavController(this, mSavedInstanceState);
         }
