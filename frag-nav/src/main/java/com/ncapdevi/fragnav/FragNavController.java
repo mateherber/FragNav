@@ -99,6 +99,7 @@ public class FragNavController {
     @FragmentHideStrategy
     private final int mFragmentHideStrategy;
     private final boolean mCreateEager;
+    private final FragNavLogger mFragNavLogger;
 
     //region Construction and setup
 
@@ -113,6 +114,7 @@ public class FragNavController {
         mPopStrategy = builder.mPopStrategy;
         mFragmentHideStrategy = builder.mFragmentHideStrategy;
         mCreateEager = builder.mCreateEager;
+        mFragNavLogger = builder.mFragNavLogger;
 
         DefaultFragNavPopController fragNavPopController = new DefaultFragNavPopController();
         switch (mPopStrategy) {
@@ -133,7 +135,6 @@ public class FragNavController {
 
         //Attempt to restore from bundle, if not, initialize
         if (!restoreFromBundle(savedInstanceState, builder.mRootFragments)) {
-
             for (int i = 0; i < builder.mNumberOfTabs; i++) {
                 Stack<Fragment> stack = new Stack<>();
                 if (builder.mRootFragments != null) {
@@ -587,6 +588,9 @@ public class FragNavController {
             try {
                 dialogFragment.show(fragmentManager, dialogFragment.getClass().getName());
             } catch (IllegalStateException e) {
+                if (mFragNavLogger != null) {
+                    mFragNavLogger.log("Could not show dialog", e);
+                }
                 // Activity was likely destroyed before we had a chance to show, nothing can be done here.
             }
         }
@@ -911,6 +915,9 @@ public class FragNavController {
 
             outState.putString(EXTRA_FRAGMENT_STACK, stackArrays.toString());
         } catch (Throwable t) {
+            if (mFragNavLogger != null) {
+                mFragNavLogger.log("Could not save fragment stack", t);
+            }
             // Nothing we can do
         }
 
@@ -985,6 +992,12 @@ public class FragNavController {
             //Successfully restored state
             return true;
         } catch (Throwable t) {
+            mTagCount = 0;
+            mCurrentFrag = null;
+            mFragmentStacks.clear();
+            if (mFragNavLogger != null) {
+                mFragNavLogger.log("Could not restore fragment state", t);
+            }
             return false;
         }
     }
@@ -1078,6 +1091,9 @@ public class FragNavController {
 
         @Nullable
         private FragNavSwitchController mFragNavSwitchController;
+
+        @Nullable
+        private FragNavLogger mFragNavLogger;
         private boolean mCreateEager = false;
 
         public Builder(@Nullable Bundle savedInstanceState, FragmentManager mFragmentManager, int mContainerId) {
@@ -1178,6 +1194,14 @@ public class FragNavController {
          */
         public Builder switchController(FragNavSwitchController fragNavSwitchController) {
             this.mFragNavSwitchController = fragNavSwitchController;
+            return this;
+        }
+
+        /**
+         * @param fragNavLogger Reports errors for the client
+         */
+        public Builder logger(FragNavLogger fragNavLogger) {
+            this.mFragNavLogger = fragNavLogger;
             return this;
         }
 
