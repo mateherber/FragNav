@@ -771,6 +771,7 @@ public class FragNavController {
         } else {
             fragmentTransaction.commit();
         }
+        executePendingTransactions();
     }
 
     private boolean shouldDetachAttachOnPushPop() {
