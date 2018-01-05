@@ -83,6 +83,10 @@ public class BottomTabsActivity extends AppCompatActivity implements BaseFragmen
             }
         });
 
+        // Simulate fast Tab switching
+        bottomBar.selectTabAtPosition(3);
+        bottomBar.selectTabAtPosition(4);
+        bottomBar.selectTabAtPosition(3);
     }
 
     @Override
